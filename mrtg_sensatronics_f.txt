@@ -1,0 +1,97 @@
+=======perl script=========
+#!/usr/local/bin/perl
+
+($probe)=@ARGV;
+die "Usage: $0 probe_name" unless $probe;
+
+use Config::IniFiles;
+$cf=Config::IniFiles->new(-file=>"/usr/local/temperature/temp_probe.cf",
+                                -default=>"default")
+                                or die "Could not open config file";
+
+$comment=$cf->val($probe,"comment");
+$limit=$cf->val($probe,"temp_limit");
+$reading=&get_temp($probe);
+open FILE,">>/tmp/log";
+if ($reading!~/GOOD/) {
+    sleep(30);
+    print FILE $reading;
+    print FILE `date`;
+    $reading=&get_temp($probe);
+    }
+print FILE $reading;
+print FILE `date`;
+if ($reading!~/GOOD/) {
+    &send_alert($comment." ".$reading);
+    print "0\n0\ndown\n$comment\n";
+    exit 0;
+    }
+($good,$temp1,$temp2)=split(/,/,$reading);
+if (($temp1 >= $limit) || ($temp2 >= $limit))
+    {
+    &send_alert("HIGH TEMPERATURE: ".$comment." ".$temp1." ".$temp2); }
+else
+    {
+    &clear_alert();
+    }
+print "$temp1\n$temp2\nunknown\n$comment\n";
+
+
+sub get_temp
+{
+my ($probe)=@_;
+require Expect;
+my $host_ip=$cf->val($probe,"host");
+my $port=$cf->val($probe,"port");
+
+$command=Expect->spawn("telnet $host_ip $port");
+$command->log_stdout(0);
+$command->expect(3,Escape) or return "Could not contact $probe";
+$command->send_slow(0,"\n");
+@ook=$command->expect(5,"Bat") or return "$probe did not respond";
+$temps=$ook[3];
+$temps=~/(.\d\d\.\d).*(.\d\d\.\d)/s;
+$temp1=$1;$temp2=$2;
+if ($ook[4] !~ /O/) {return "Battery not ok on $probe: @ook";}
+return "GOOD,".&Fconvert($temp1).",".&Fconvert($temp2);
+}
+
+sub Fconvert
+{
+my ($temp)=@_;
+chomp $temp;
+return 0 if $temp<0;
+$temp= ($temp-32)/9*5;
+$temp=sprintf("%.2f",$temp);
+return $temp;
+}
+
+sub send_alert
+{
+my ($message)=@_;
+$file="/tmp/".$probe;
+if ((! -f $file) || ((time-(stat($file))[9])>86400))
+    {
+    `touch $file`;
+    $command_string=$cf->val($probe,"page_command")." ".$message;
+    `rsh shine "$command_string"`;
+    }
+}
+
+===============config file===============
+[default]
+temp_limit=27
+host=sa-nts-1
+page_command=/usr/xiam/send_sms_temp.pl
+
+[edub_1_eng]
+comment=a sample lab
+port=10003
+sub clear_alert
+{
+$file="/tmp/".$probe;
+if (-f $file)
+    {
+    `rm $file`;
+    }
+}

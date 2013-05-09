@@ -1,0 +1,176 @@
+# 
+# MRTG Template for Sensatronics EM1
+# Created by OPENXTRA Ltd. (http://www.openxtra.co.uk/), Template Author Dean Sykes
+#
+# usage:
+#	cfgmaker --nointerfaces --host-template=sensatronics_em1.template community@ip_address -global "WorkDir: <workdir>" -global "RunAsDaemon: [Yes|No]" --output=<filename>
+#
+# version: 1.1
+# date: 15 November 2005
+#
+#
+
+
+my $i = 0;
+my $probescount = 4;
+my $unitname = snmpget($router_connect, '1.3.6.1.4.1.16174.1.1.3.1.1.0');
+my $model = snmpget($router_connect, '1.3.6.1.4.1.16174.1.1.3.1.2.0');
+my $measurement = snmpget($router_connect, '1.3.6.1.4.1.16174.1.1.3.2.3.1.0');
+my $measurementUnit = "";
+my $measurementUnitLong = "";
+my $maxbytes = 1000;
+
+# Indentify the temperature measurement unit
+if ($measurement eq "R") {
+	$measurementUnit = "&deg;R";
+	$measurementUnitLong = "Rankine";
+} elsif ($measurement eq "C") {
+	$measurementUnit = "&deg;C";
+	$measurementUnitLong = "Celsius";
+} elsif ($measurement eq "K") {
+	$measurementUnit = "&deg;K";
+	$measurementUnitLong = "Kelvin";
+} elsif ($measurement eq "F") {
+	$measurementUnit = "&deg;F";
+	$measurementUnitLong = "Fahrenheit";
+} elsif ($measurement eq "0") {
+	$measurementUnit = "&deg;C";
+	$measurementUnitLong = "Celsius";
+} else {
+	$measurementUnit = "&deg;F";
+	$measurementUnitLong = "Fahrenheit";
+}
+
+if($directory_name == "")
+{
+	$_ = $unitname;
+	tr/ /_/;
+	$directory_name = $_;
+} else {
+	$_ = $directory_name;
+	tr/ /_/;
+	$directory_name = $_;
+}
+     
+$head_lines .= <<ECHO;
+
+# 
+# MRTG Config for Sensatronics EM1
+# Created using MRTG Template sensatronics_em1.template
+# MRTG Template Created by OPENXTRA Ltd. (http://www.openxtra.co.uk), Template Author Dean Sykes 
+#
+# version: 1.1
+
+
+NoMib2: Yes
+
+ECHO
+
+;
+for ( $i = 1; $i <= $probescount; $i++)
+{
+my $groupname = snmpget($router_connect, '1.3.6.1.4.1.16174.1.1.3.3.'.$i.'.1.0');
+$groupname = substr($groupname, index($groupname, ":") + 1, length($groupname) - (index($groupname, ":") + 1));
+$_ = $groupname;
+tr/ /_/;
+my $groupname_ = $_;
+
+my $probename = snmpget($router_connect, '1.3.6.1.4.1.16174.1.1.3.3.'.$i.'.2.0');
+$probename = substr($probename, index($probename, ":") + 1, length($probename) - (index($probename, ":") + 1));
+$_ = $probename;
+tr/ /_/;
+my $probename_ = $_;
+
+
+my $probenumber = $i;
+my $temperature_status = ($router_name) . "_" . $groupname_ ."_". $probename_ . "_temperature";
+$target_lines .= <<ECHO;
+Target[$temperature_status]: 1.3.6.1.4.1.16174.1.1.3.3.$probenumber.3.0&1.3.6.1.4.1.16174.1.1.3.3.$probenumber.3.0:$router_connect
+Title[$temperature_status]: $unitname [$router_name] $groupname Temperature
+PageTop[$temperature_status]: <H1>$unitname [$router_name] $probename ($groupname) Temperature</H1>
+MaxBytes[$temperature_status]: $maxbytes
+ShortLegend[$temperature_status]: $measurementUnit 
+YLegend[$temperature_status]: $measurementUnitLong
+Legend1[$temperature_status]: Temperature
+Legend2[$temperature_status]:
+Legend3[$temperature_status]:
+Legend4[$temperature_status]:
+LegendI[$temperature_status]: Temperature
+LegendO[$temperature_status]:
+Options[$temperature_status]: gauge, growright, nopercent, integer
+Directory[$temperature_status]: $directory_name
+
+ECHO
+; 
+}
+
+for ( $i = 1; $i <= $probescount; $i++)
+{
+my $groupname = snmpget($router_connect, '1.3.6.1.4.1.16174.1.1.3.3.'.$i.'.1.0');
+$_ = $groupname;
+tr/ /_/;
+my $groupname_ = $_;
+
+my $probename = snmpget($router_connect, '1.3.6.1.4.1.16174.1.1.3.3.'.$i.'.5.0');
+$probename = substr($probename, index($probename, ":") + 1, length($probename) - (index($probename, ":") + 1));
+$_ = $probename;
+tr/ /_/;
+my $probename_ = $_;
+
+my $probenumber = $i;
+my $humidity_status = ($router_name) . "_" . $groupname_ ."_". $probename_ . "_humidity";
+$target_lines .= <<ECHO;
+Target[$humidity_status]: 1.3.6.1.4.1.16174.1.1.3.3.$probenumber.6.0&1.3.6.1.4.1.16174.1.1.3.3.$probenumber.6.0:$router_connect
+Title[$humidity_status]: $unitname [$router_name] $groupname Humidity
+PageTop[$humidity_status]: <H1>$unitname [$router_name] $probename ($groupname) Humidity</H1>
+MaxBytes[$humidity_status]: 100
+ShortLegend[$humidity_status]: % 
+YLegend[$humidity_status]: Percent
+Legend1[$humidity_status]: Humidity
+Legend2[$humidity_status]:
+Legend3[$humidity_status]:
+Legend4[$humidity_status]:
+LegendI[$humidity_status]: Humidity
+LegendO[$humidity_status]:
+Options[$humidity_status]: gauge, growright, nopercent, integer
+Directory[$humidity_status]: $directory_name
+
+ECHO
+; 
+}
+
+for ( $i = 1; $i <= $probescount; $i++)
+{
+my $groupname = snmpget($router_connect, '1.3.6.1.4.1.16174.1.1.3.3.'.$i.'.1.0');
+$groupname =substr($groupname, index($groupname, ":") + 1, length($groupname) - (index($groupname, ":") + 1));
+$_ = $groupname;
+tr/ /_/;
+my $groupname_ = $_;
+
+my $probename = snmpget($router_connect, '1.3.6.1.4.1.16174.1.1.3.3.'.$i.'.8.0');
+$probename = substr($probename, index($probename, ":") + 1, length($probename) - (index($probename, ":") + 1));
+$_ = $probename;
+tr/ /_/;
+my $probename_ = $_;
+
+my $probenumber = $i;
+my $wetness_status = ($router_name) . "_" . $groupname_ ."_". $probename_ . "_wetness";
+$target_lines .= <<ECHO;
+Target[$wetness_status]: 1.3.6.1.4.1.16174.1.1.3.3.$probenumber.9.0&1.3.6.1.4.1.16174.1.1.3.3.$probenumber.9.0:$router_connect
+Title[$wetness_status]: $unitname [$router_name] $groupname Wetness
+PageTop[$wetness_status]: <H1>$unitname [$router_name] $probename ($groupname) Wetness</H1>
+MaxBytes[$wetness_status]: 1000
+ShortLegend[$wetness_status]: units  
+YLegend[$wetness_status]: Units
+Legend1[$wetness_status]: Wetness
+Legend2[$wetness_status]:
+Legend3[$wetness_status]:
+Legend4[$wetness_status]:
+LegendI[$wetness_status]: Wetness
+LegendO[$wetness_status]:
+Options[$wetness_status]: gauge, growright, nopercent, integer
+Directory[$wetness_status]: $directory_name
+
+ECHO
+; 
+}
